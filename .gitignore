@@ -1,13 +1,29 @@
+# Dependencies
+node_modules/
 
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
 .idea/
-*.class
-*.java~
-.history/
 *.swp
-.pytest_cache/
-__pycache__/
-.scratch
-*.beam
+*.swo
+
+# OS
 .DS_Store
-venv/
-generated/
+Thumbs.db
+
+# Build
+dist/
+build/

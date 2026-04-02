@@ -1,0 +1,15 @@
+{
+  "name": "cinnamoroll-jump-game",
+  "version": "1.0.0",
+  "description": "Cinnamoroll主题多人联机跳一跳游戏",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "better-sqlite3": "^9.4.3",
+    "bcryptjs": "^2.4.3"
+  }
+}

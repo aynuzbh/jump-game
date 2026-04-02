@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>跳一跳 - 游戏中</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{--primary:#7EC8E3;--accent:#FFB6C1;--cream:#FFF8F0;--text:#5B7B8A;--text-dark:#3A5A6A;--danger:#FF8A80;--success:#A8E6CF;--bg:#F0F8FF}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}
+body{background:#E8F4FD;display:flex;flex-direction:column}
+#top-bar{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(255,255,255,0.9);backdrop-filter:blur(10px);border-bottom:1px solid rgba(126,200,227,0.2);z-index:10;flex-shrink:0}
+#top-bar .room-tag{font-size:13px;color:var(--text);font-weight:600}
+#top-bar .room-tag b{color:var(--primary);font-size:15px;letter-spacing:2px}
+.btn-icon{width:34px;height:34px;border:none;border-radius:10px;background:rgba(0,0,0,0.05);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text);transition:all .15s}
+.btn-icon:hover{background:rgba(0,0,0,0.1)}
+#player-bar{display:flex;gap:6px;padding:6px 10px;background:rgba(255,255,255,0.85);overflow-x:auto;flex-shrink:0;border-bottom:1px solid rgba(126,200,227,0.1)}
+.p-chip{display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap;background:rgba(0,0,0,0.04);border:2px solid transparent;transition:all .2s}
+.p-chip.current{border-color:var(--primary);background:rgba(126,200,227,0.12)}
+.p-chip.dead{opacity:.45;text-decoration:line-through}
+.p-chip .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.p-chip .lives{display:flex;gap:2px;margin-left:4px}
+.p-chip .life{width:12px;height:12px;border-radius:50%;background:#FFB6C1;border:2px solid #FFB6C1}
+.p-chip .life.lost{background:transparent;border-color:rgba(255,182,193,0.4)}
+#canvas-wrap{flex:1;position:relative;overflow:hidden;touch-action:none}
+canvas{display:block;width:100%;height:100%}
+#turn-overlay{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center;transition:all .3s;z-index:5}
+#turn-overlay.hidden{opacity:0;transform:translate(-50%,-50%) scale(0.8)}
+#turn-overlay .turn-text{font-size:22px;font-weight:700;color:var(--text-dark);text-shadow:0 2px 8px rgba(255,255,255,0.8)}
+#turn-overlay .turn-hint{font-size:13px;color:var(--text);margin-top:4px}
+#charge-hint{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);font-size:14px;font-weight:600;color:var(--primary);opacity:0;transition:opacity .2s;pointer-events:none;text-shadow:0 1px 4px rgba(255,255,255,0.8)}
+#charge-hint.show{opacity:1}
+#game-over{position:absolute;inset:0;background:rgba(255,255,255,0.92);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center;flex-direction:column;z-index:20;overflow-y:auto;padding:20px 0}
+#game-over.show{display:flex}
+#game-over h2{font-size:26px;color:var(--text-dark);margin-bottom:6px}
+#game-over .winner-name{font-size:18px;color:var(--primary);font-weight:700;margin-bottom:20px}
+#game-over .go-btns{display:flex;gap:10px;margin-top:20px}
+#invite-modal{position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center;z-index:1000}
+#invite-modal.show{display:flex}
+#invite-modal .modal-content{background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);border-radius:24px;padding:32px;width:400px;max-width:90vw;box-shadow:0 8px 32px rgba(126,200,227,0.3),0 2px 8px rgba(0,0,0,0.08);border:1px solid rgba(255,255,255,0.8);text-align:center}
+#invite-modal .modal-title{font-size:22px;color:var(--text-dark);margin-bottom:8px;font-weight:700}
+#invite-modal .modal-message{font-size:15px;color:var(--text);margin-bottom:24px;line-height:1.6}
+#invite-modal .modal-room-code{font-size:28px;font-weight:800;color:var(--primary);letter-spacing:4px;margin-bottom:24px;padding:10px;background:var(--bg);border-radius:14px;font-family:'Courier New',monospace;display:inline-block}
+#invite-modal .modal-btns{display:flex;gap:10px;justify-content:center}
+#game-over .btn{padding:11px 24px;border:none;border-radius:14px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-go{background:linear-gradient(135deg,var(--primary),#6BB8D6);color:#fff;box-shadow:0 3px 10px rgba(126,200,227,0.3)}
+.btn-back{background:rgba(0,0,0,0.06);color:var(--text)}
+#rankings-list{width:90%;max-width:400px;max-height:50vh;overflow-y:auto}
+.ranking-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:rgba(255,255,255,0.7);border-radius:12px;margin-bottom:8px;border:1px solid rgba(126,200,227,0.15)}
+.ranking-item.winner{background:linear-gradient(135deg,rgba(126,200,227,0.15),rgba(168,230,207,0.15));border-color:var(--primary)}
+.ranking-item .rank{width:24px;height:24px;border-radius:50%;background:rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--text)}
+.ranking-item.winner .rank{background:var(--primary);color:#fff}
+.ranking-item .player-info{flex:1}
+.ranking-item .player-name{font-weight:600;font-size:14px;color:var(--text-dark)}
+.ranking-item .player-stat{font-size:11px;color:var(--text);margin-top:2px}
+.ranking-item .trophy{font-size:18px}
+</style>
+</head>
+<body>
+<div id="top-bar">
+  <button class="btn-icon" onclick="goBack()" title="返回">&#9664;</button>
+  <div class="room-tag">房间 <b id="roomTag"></b></div>
+  <div style="width:34px"></div>
+</div>
+<div id="player-bar"></div>
+<div id="canvas-wrap">
+  <canvas id="gc"></canvas>
+  <div id="turn-overlay" class="hidden">
+    <div class="turn-text" id="turnText"></div>
+    <div class="turn-hint" id="turnHint"></div>
+  </div>
+  <div id="charge-hint">按住蓄力，松开跳跃！</div>
+</div>
+<div id="game-over">
+  <h2 id="goTitle">游戏结束</h2>
+  <div class="winner-name" id="goWinner"></div>
+<div id="rankings-list"></div>
+<div class="go-btns">
+  <button class="btn btn-go" id="btnAgain">再来一局</button>
+  <button class="btn btn-back" onclick="goBack()">返回大厅</button>
+</div>
+</div>
+<div id="invite-modal">
+  <div class="modal-content">
+    <div class="modal-title">🎮 游戏邀请</div>
+    <div class="modal-message" id="inviteMessage"></div>
+    <div class="modal-room-code" id="inviteRoomCode"></div>
+    <div class="modal-btns">
+      <button class="btn btn-go" id="btnAcceptInvite">接受邀请</button>
+      <button class="btn btn-back" id="btnDeclineInvite">拒绝</button>
+    </div>
+  </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const AVATAR_COLORS=['#7EC8E3','#FFB6C1','#A8E6CF','#FFD700','#DDA0DD','#87CEEB','#FFA07A','#98D8C8'];
+const pidColors={};
+
+// ---- State ----
+let user,socket,code;
+let platforms=[],curIdx=0;
+let players=[],curPlayerIdx=0;
+let myTurn=false,gameOver=false;
+let charging=false,chargeStart=0;
+let anim=null; // {start,dur,sx,sy,sz,ex,ey,ez,ok,data}
+let camX=0,camY=0,tCamX=0,tCamY=0;
+let particles=[];
+
+// ---- Canvas ----
+let canvas,ctx,W,H;
+
+// ---- Init ----
+function init(){
+  user=JSON.parse(localStorage.getItem('user'));
+  if(!user)return window.location.href='/';
+  code=new URLSearchParams(location.search).get('code')||'';
+  if(!code)return window.location.href='/lobby.html';
+  document.getElementById('roomTag').textContent=code;
+
+  canvas=document.getElementById('gc');
+  ctx=canvas.getContext('2d');
+  resize();
+  window.addEventListener('resize',resize);
+
+  socket=io({auth:{token:localStorage.getItem('token')}});
+  socket.on('connect',()=>{
+    // 连接后立即尝试加入游戏，不管游戏是否已经开始
+    socket.emit('rejoin-game',{code});
+  });
+  socket.on('connect_error',(err)=>{
+    showToast('连接失败: '+err.message);
+  });
+  socket.on('disconnect',()=>{
+    showToast('连接断开');
+  });
+  socket.on('game-state',s=>{applyState(s);});
+  socket.on('game-started',s=>{applyState(s);});
+  socket.on('room-updated',s=>{
+    // 如果收到 room-updated 但游戏未开始，可能是游戏重置了
+    if(s.status==='waiting'){
+      window.location.href='/lobby.html';
+    }
+  });
+  socket.on('turn-start',d=>{
+    curPlayerIdx=d.playerIndex;
+    myTurn=d.player&&d.player.id===user.id;
+    showTurnUI();
+  });
+  socket.on('jump-result',d=>onJumpResult(d));
+  socket.on('game-over',d=>onGameOver(d));
+  socket.on('play-again-invite',d=>{
+    const modal=document.getElementById('invite-modal');
+    document.getElementById('inviteMessage').textContent=`${d.from} 邀请你再来一局！`;
+    document.getElementById('inviteRoomCode').textContent=d.roomCode;
+    modal.classList.add('show');
+    
+    document.getElementById('btnAcceptInvite').onclick=()=>{
+      modal.classList.remove('show');
+      window.location.href='/lobby.html?code='+d.roomCode;
+    };
+    document.getElementById('btnDeclineInvite').onclick=()=>{
+      modal.classList.remove('show');
+    };
+  });
+  socket.on('play-again-created',d=>{
+    showToast('新房间已创建，正在跳转...');
+    window.location.href='/lobby.html?code='+d.code;
+  });
+  socket.on('error',m=>{showToast(m);});
+
+  // Input
+  canvas.addEventListener('mousedown',onDown);
+  canvas.addEventListener('mouseup',onUp);
+  canvas.addEventListener('touchstart',onDown,{passive:false});
+  canvas.addEventListener('touchend',onUp,{passive:false});
+  canvas.addEventListener('touchcancel',onUp,{passive:false});
+
+  requestAnimationFrame(loop);
+}
+
+function resize(){
+  const wrap=document.getElementById('canvas-wrap');
+  W=canvas.width=wrap.clientWidth*devicePixelRatio;
+  H=canvas.height=wrap.clientHeight*devicePixelRatio;
+  canvas.style.width=wrap.clientWidth+'px';
+  canvas.style.height=wrap.clientHeight+'px';
+  ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+
+function applyState(s){
+  if(s.game){platforms=s.game.platforms||[];curIdx=s.game.currentPlatformIndex||0;}
+  players=s.players||[];
+  curPlayerIdx=s.currentPlayerIndex||0;
+  // 根据 currentPlayerIdx 判断是否轮到自己
+  const cp=players[curPlayerIdx];
+  myTurn=cp&&cp.id===user.id&&cp.isAlive;
+  updatePlayerBar();
+  // 显示当前回合UI
+  showTurnUI();
+}
+
+// ---- Input ----
+function onDown(e){
+  if(!myTurn||anim||gameOver)return;
+  e.preventDefault();
+  charging=true;chargeStart=Date.now();
+  document.getElementById('charge-hint').classList.remove('show');
+}
+function onUp(e){
+  if(!charging)return;
+  e.preventDefault();
+  charging=false;
+  const ct=Math.min(5,(Date.now()-chargeStart)/1000);
+  socket.emit('jump',{code,chargeTime:ct});
+  myTurn=false;
+  showTurnUI();
+}
+
+// ---- Jump Result ----
+function onJumpResult(d){
+  // 保存跳跃前的平台索引
+  const fromIdx = curIdx;
+  const fromP = platforms[fromIdx];
+  const toP = platforms[fromIdx + 1];
+  
+  // 更新平台数据（这会改变curIdx）
+  if(d.game&&d.game.platforms){platforms=d.game.platforms;curIdx=d.game.currentPlatformIndex;}
+  // 更新玩家存活状态和生命值
+  if(d.alivePlayers){
+    d.alivePlayers.forEach(ap=>{
+      const p=players.find(x=>x.id===ap.id);
+      if(p){
+        p.isAlive=ap.isAlive;
+        if(ap.lives!==undefined)p.lives=ap.lives;
+      }
+    });
+  }
+  updatePlayerBar();
+
+  if(!fromP||!toP)return;
+
+  const ang=Math.atan2(toP.y-fromP.y,toP.x-fromP.x);
+  const jd=d.jumpDistance;
+  const rd=d.requiredDistance;
+  
+  // 成功时落在目标平台中心，失败时落在实际跳跃距离处
+  const landX=d.success?toP.x:fromP.x+Math.cos(ang)*jd;
+  const landY=d.success?toP.y:fromP.y+Math.sin(ang)*jd;
+  const landZ=d.success?toP.height:0;
+
+  anim={start:Date.now(),dur:600,sx:fromP.x,sy:fromP.y,sz:fromP.height+25,ex:landX,ey:landY,ez:landZ+25,ok:d.success,data:d,fromIdx:fromIdx};
+
+  // 成功时的粒子效果
+  if(d.success){
+    for(let i=0;i<12;i++){
+      const a=Math.random()*Math.PI*2;
+      particles.push({x:0,y:0,vx:Math.cos(a)*(2+Math.random()),vy:Math.sin(a)*(2+Math.random())-1,life:1,color:'#FFD700',born:Date.now()});
+    }
+  }
+  
+  // 失败时显示红色粒子效果
+  if(!d.success){
+    for(let i=0;i<8;i++){
+      const a=Math.random()*Math.PI*2;
+      particles.push({x:0,y:0,vx:Math.cos(a)*(1.5+Math.random()),vy:Math.sin(a)*(1.5+Math.random())-0.5,life:1,color:'#FF6B6B',born:Date.now()});
+    }
+    // 如果有淘汰顺序更新，可以在这里实时显示排行榜
+  }
+}
+
+// ---- Game Over ----
+function onGameOver(d){
+  gameOver=true;
+  // 更新玩家状态
+  if(d.players){
+    players=d.players;
+    updatePlayerBar();
+  }
+  const el=document.getElementById('game-over');
+  el.classList.add('show');
+  if(d.winner){
+    document.getElementById('goTitle').textContent=d.winner.id===user.id?'恭喜你赢了！':'游戏结束';
+    document.getElementById('goWinner').textContent=d.winner.username+' 获胜！';
+  } else {
+    document.getElementById('goTitle').textContent='平局';
+    document.getElementById('goWinner').textContent='';
+  }
+  // 显示排行榜
+  showRankings(d);
+  document.getElementById('btnAgain').onclick=()=>{
+    socket.emit('play-again',{code});
+    // 不需要手动跳转，房主会收到 play-again-created 事件
+  };
+}
+
+// ---- UI ----
+function updatePlayerBar(){
+  const bar=document.getElementById('player-bar');
+  bar.innerHTML='';
+  (players||[]).forEach((p,i)=>{
+    if(!pidColors[p.id])pidColors[p.id]=AVATAR_COLORS[Object.keys(pidColors).length%AVATAR_COLORS.length];
+    const chip=document.createElement('div');
+    chip.className='p-chip';
+    if(i===curPlayerIdx)chip.classList.add('current');
+    if(!p.isAlive)chip.classList.add('dead');
+    
+    // 显示生命值
+    let livesHtml='';
+    if(p.isAlive){
+      const lives=p.lives||3;
+      livesHtml='<div class="lives">';
+      for(let j=0;j<3;j++){
+        livesHtml+=`<div class="life ${j<lives?'':'lost'}"></div>`;
+      }
+      livesHtml+='</div>';
+    }
+    
+    chip.innerHTML=`<span class="dot" style="background:${pidColors[p.id]}"></span>${p.username}${livesHtml}`;
+    bar.appendChild(chip);
+  });
+}
+
+function showTurnUI(){
+  const ov=document.getElementById('turn-overlay');
+  const txt=document.getElementById('turnText');
+  const hint=document.getElementById('turnHint');
+  const ch=document.getElementById('charge-hint');
+  ov.classList.remove('hidden');
+  if(gameOver){ov.classList.add('hidden');ch.classList.remove('show');return;}
+  const cp=players[curPlayerIdx];
+  if(!cp){
+    txt.textContent='加载中...';
+    hint.textContent='';
+    ch.classList.remove('show');
+    return;
+  }
+  if(cp.id===user.id){
+    txt.textContent='轮到你了！';
+    hint.textContent='按住屏幕蓄力';
+    ch.classList.add('show');
+    setTimeout(()=>ov.classList.add('hidden'),1500);
+  } else {
+    txt.textContent=cp.username+' 正在操作...';
+    hint.textContent='请等待';
+    ch.classList.remove('show');
+  }
+}
+
+function goBack(){
+  if(code)socket.emit('leave-room',{code});
+  window.location.href='/lobby.html';
+}
+
+function showRankings(d){
+  const list=document.getElementById('rankings-list');
+  list.innerHTML='';
+  
+  if(!d.eliminationOrder||d.eliminationOrder.length===0){
+    list.innerHTML='<div style="text-align:center;color:var(--text);padding:20px;">暂无排行榜数据</div>';
+    return;
+  }
+  
+  // 创建排行榜列表：最后被淘汰的排名靠前，幸存者排名第一
+  const rankings=[];
+  
+  // 先添加幸存者（如果有的话）
+  const alive=players.filter(p=>p.isAlive);
+  alive.forEach(p=>{
+    rankings.push({player:p,rank:1,stat:'坚持到最后',trophy:'🏆'});
+  });
+  
+  // 再按淘汰顺序添加被淘汰的玩家（先淘汰的排名靠后）
+  d.eliminationOrder.forEach((eliminated,index)=>{
+    rankings.push({
+      player:{id:eliminated.id,username:eliminated.username},
+      rank:alive.length+index+1,
+      stat:'第'+eliminated.eliminatedAt+'关淘汰',
+      trophy:''
+    });
+  });
+  
+  rankings.forEach(item=>{
+    const div=document.createElement('div');
+    div.className='ranking-item'+(item.rank===1?' winner':'');
+    div.innerHTML=`
+      <div class="rank">${item.rank}</div>
+      <div class="player-info">
+        <div class="player-name">${item.player.username}</div>
+        <div class="player-stat">${item.stat}</div>
+      </div>
+      <div class="trophy">${item.trophy}</div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function showToast(msg){
+  const el=document.createElement('div');
+  el.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(255,138,128,0.95);color:#fff;padding:10px 24px;border-radius:12px;font-size:14px;font-weight:500;z-index:999;transition:opacity .3s;';
+  el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';setTimeout(()=>el.remove(),300);},2500);
+}
+
+// ---- Render ----
+function w2s(wx,wy,wz){
+  return{x:(wx-wy)*0.866,y:(wx+wy)*0.5-(wz||0)};
+}
+
+function loop(){
+  update();
+  render();
+  requestAnimationFrame(loop);
+}
+
+function update(){
+  // Camera smooth
+  camX+=(tCamX-camX)*0.1;
+  camY+=(tCamY-camY)*0.1;
+
+  // Animation
+  if(anim){
+    const t=Math.min(1,(Date.now()-anim.start)/anim.dur);
+    if(t>=1){
+      // 动画完成，curIdx 已在 onJumpResult 中更新，无需再次修改
+      const d=anim.data;
+      anim=null;
+      
+      // 先处理淘汰状态（即使游戏结束也要更新）
+      if(d&&d.eliminated){
+        // 更新被淘汰玩家的状态
+        const ep=players.find(p=>p.id===d.eliminated.id);
+        if(ep)ep.isAlive=false;
+        updatePlayerBar();
+      }
+      
+      // 处理游戏结束状态
+      if(d&&d.gameOver){
+        gameOver=true;
+        onGameOver(d);
+      } else {
+        // 游戏未结束，切换到下一位玩家
+        if(d&&d.nextPlayerIndex!==undefined){
+          curPlayerIdx=d.nextPlayerIndex;
+          myTurn=d.nextPlayer&&d.nextPlayer.id===user.id;
+          updatePlayerBar();
+          showTurnUI();
+        }
+      }
+    }
+  }
+
+  // Particles
+  const now=Date.now();
+  particles=particles.filter(p=>{
+    const age=(now-p.born)/1000;
+    if(age>1.5)return false;
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.12;
+    return true;
+  });
+}
+
+function render(){
+  const w=W/devicePixelRatio,h=H/devicePixelRatio;
+  ctx.clearRect(0,0,w,h);
+
+  // Background gradient
+  const bg=ctx.createLinearGradient(0,0,0,h);
+  bg.addColorStop(0,'#E8F4FD');bg.addColorStop(0.5,'#FFF8F0');bg.addColorStop(1,'#FFE8F0');
+  ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);
+
+  // Decorative clouds
+  drawClouds(w,h);
+
+  if(!platforms.length){
+    // 显示加载提示
+    ctx.fillStyle='rgba(90,123,138,0.6)';
+    ctx.font='bold 16px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('等待游戏数据...',w/2,h/2);
+    return;
+  }
+
+  // Camera target - 跟随当前平台
+  const curr=platforms[curIdx];
+  const next=platforms[curIdx+1];
+  if(curr){
+    const target=next?{x:(curr.x+next.x)/2,y:(curr.y+next.y)/2}:curr;
+    const p=w2s(target.x,target.y,0);
+    tCamX=p.x;tCamY=p.y;
+  }
+
+  // Draw platforms (sorted back to front)
+  const visStart=Math.max(0,curIdx-1);
+  const visEnd=Math.min(platforms.length,curIdx+5);
+  const sorted=[];
+  for(let i=visStart;i<visEnd;i++)sorted.push({i,p:platforms[i]});
+  sorted.sort((a,b)=>(a.p.x+a.p.y)-(b.p.x+b.p.y));
+
+  sorted.forEach(({i,p})=>drawPlatform(p,w,h,i===curIdx,i===curIdx+1));
+
+  // Draw character
+  drawChar(w,h);
+
+  // Draw particles
+  drawParticles(w,h);
+}
+
+function drawClouds(w,h){
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  const t=Date.now()/1000;
+  [[0.15,0.1,1.2],[0.7,0.05,0.8],[0.4,0.75,1],[0.85,0.6,0.6]].forEach(([rx,ry,sc])=>{
+    const cx=((t*8*sc+rx*w*3)%(w+200))-100;
+    const cy=ry*h;
+    drawCloud(cx,cy,40*sc);
+  });
+}
+
+function drawCloud(x,y,s){
+  ctx.beginPath();
+  ctx.arc(x,y,s*0.5,0,Math.PI*2);
+  ctx.arc(x+s*0.4,y-s*0.15,s*0.35,0,Math.PI*2);
+  ctx.arc(x-s*0.35,y+s*0.05,s*0.3,0,Math.PI*2);
+  ctx.arc(x+s*0.15,y-s*0.3,s*0.25,0,Math.PI*2);
+  ctx.fill();
+}
+
+function drawPlatform(p,cw,ch,isCur,isNext){
+  const top=w2s(p.x,p.y,p.height);
+  const sx=top.x-camX+cw/2;
+  const sy=top.y-camY+ch/2;
+  const hs=p.size/2;
+  const dx=hs*0.866,dy=hs*0.5;
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.06)';
+  ctx.beginPath();ctx.ellipse(sx,sy+dy+p.height+4,dx*1.05,dy*0.8,0,0,Math.PI*2);ctx.fill();
+
+  if(p.type==='cylinder'){
+    // Cylinder
+    const rx=dx,ry=dy;
+    // Side
+    ctx.fillStyle=darken(p.color,0.75);
+    ctx.beginPath();
+    ctx.moveTo(sx-rx,sy);ctx.lineTo(sx-rx,sy+p.height);
+    ctx.ellipse(sx,sy+p.height,rx,ry,0,Math.PI,0,true);
+    ctx.lineTo(sx+rx,sy);
+    ctx.ellipse(sx,sy,rx,ry,0,0,Math.PI,true);
+    ctx.closePath();ctx.fill();
+    // Top
+    ctx.fillStyle=isCur?lighten(p.color,0.2):isNext?lighten(p.color,0.1):p.color;
+    ctx.beginPath();ctx.ellipse(sx,sy,rx,ry,0,0,Math.PI*2);ctx.fill();
+    // Highlight
+    ctx.fillStyle='rgba(255,255,255,0.25)';
+    ctx.beginPath();ctx.ellipse(sx-2,sy-1,rx*0.5,ry*0.4,-.3,0,Math.PI*2);ctx.fill();
+    // Edge
+    ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.ellipse(sx,sy,rx,ry,0,0,Math.PI*2);ctx.stroke();
+  } else {
+    // Box
+    // Left face
+    ctx.fillStyle=darken(p.color,0.68);
+    ctx.beginPath();ctx.moveTo(sx-dx,sy);ctx.lineTo(sx,sy+dy);ctx.lineTo(sx,sy+dy+p.height);ctx.lineTo(sx-dx,sy+p.height);ctx.closePath();ctx.fill();
+    // Right face
+    ctx.fillStyle=darken(p.color,0.82);
+    ctx.beginPath();ctx.moveTo(sx+dx,sy);ctx.lineTo(sx,sy+dy);ctx.lineTo(sx,sy+dy+p.height);ctx.lineTo(sx+dx,sy+p.height);ctx.closePath();ctx.fill();
+    // Top face
+    ctx.fillStyle=isCur?lighten(p.color,0.22):isNext?lighten(p.color,0.1):p.color;
+    ctx.beginPath();ctx.moveTo(sx,sy-dy);ctx.lineTo(sx+dx,sy);ctx.lineTo(sx,sy+dy);ctx.lineTo(sx-dx,sy);ctx.closePath();ctx.fill();
+    // Highlight
+    ctx.fillStyle='rgba(255,255,255,0.3)';
+    ctx.beginPath();ctx.moveTo(sx,sy-dy);ctx.lineTo(sx+dx*0.5,sy-dy*0.5);ctx.lineTo(sx,sy);ctx.lineTo(sx-dx*0.5,sy-dy*0.5);ctx.closePath();ctx.fill();
+    // Edges
+    ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(sx,sy-dy);ctx.lineTo(sx+dx,sy);ctx.lineTo(sx,sy+dy);ctx.lineTo(sx-dx,sy);ctx.closePath();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(sx-dx,sy);ctx.lineTo(sx-dx,sy+p.height);ctx.moveTo(sx+dx,sy);ctx.lineTo(sx+dx,sy+p.height);ctx.moveTo(sx,sy+dy);ctx.lineTo(sx,sy+dy+p.height);ctx.stroke();
+  }
+
+  // Next platform marker
+  if(isNext&&!anim){
+    ctx.save();
+    const pulse=0.5+0.5*Math.sin(Date.now()/300);
+    ctx.strokeStyle=`rgba(126,200,227,${0.3+pulse*0.3})`;
+    ctx.lineWidth=2;ctx.setLineDash([4,4]);
+    ctx.beginPath();ctx.arc(sx,sy-dy-12,8+pulse*3,0,Math.PI*2);ctx.stroke();
+    ctx.setLineDash([]);
+    // Arrow
+    ctx.fillStyle=`rgba(126,200,227,${0.4+pulse*0.3})`;
+    ctx.beginPath();ctx.moveTo(sx,sy-dy-20);ctx.lineTo(sx-5,sy-dy-14);ctx.lineTo(sx+5,sy-dy-14);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawChar(cw,ch){
+  let cx,cy,squash=0;
+  
+  // 当前棋子所在的平台索引（跳跃前是curIdx，跳跃后应该是curIdx）
+  const charIdx=anim?anim.fromIdx:curIdx;
+  const curr=platforms[charIdx];
+  if(!curr){
+    // 如果没有当前平台，尝试使用第一个平台
+    if(platforms.length>0){
+      const p=w2s(platforms[0].x,platforms[0].y,platforms[0].height);
+      cx=p.x-camX+cw/2;
+      cy=p.y-camY+ch/2;
+      drawCinnamoroll(cx,cy,1,0);
+    }
+    return;
+  }
+
+  if(anim){
+    // 动画中
+    const t=Math.min(1,(Date.now()-anim.start)/anim.dur);
+    const e=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+    const wx=anim.sx+(anim.ex-anim.sx)*e;
+    const wy=anim.sy+(anim.ey-anim.sy)*e;
+    const wz=anim.sz+(anim.ez-anim.sz)*e;
+    const arc=80*Math.sin(Math.PI*t);
+    const pos=w2s(wx,wy,wz+arc);
+    cx=pos.x-camX+cw/2;
+    cy=pos.y-camY+ch/2;
+    squash=0;
+  } else {
+    // 静止状态
+    const pos=w2s(curr.x,curr.y,curr.height);
+    cx=pos.x-camX+cw/2;
+    cy=pos.y-camY+ch/2;
+    if(charging)squash=Math.min(0.55,(Date.now()-chargeStart)/2200);
+  }
+
+  drawCinnamoroll(cx,cy,1,squash);
+
+  // Charge ring
+  if(charging){
+    const ct=(Date.now()-chargeStart)/1000;
+    const prog=Math.min(1,ct/3.5);
+    const r=28+prog*14;
+    ctx.strokeStyle=prog<0.5?'rgba(126,200,227,0.6)':prog<0.8?'rgba(255,215,0,0.6)':'rgba(255,107,107,0.7)';
+    ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(cx,cy-20,r,-Math.PI/2,-Math.PI/2+Math.PI*2*prog);ctx.stroke();
+    // Power text
+    ctx.fillStyle='rgba(90,123,138,0.8)';
+    ctx.font='bold 11px sans-serif';ctx.textAlign='center';
+    ctx.fillText(Math.round(prog*100)+'%',cx,cy-20-r-6);
+  }
+}
+
+function drawCinnamoroll(x,y,sc,sq){
+  const bw=20*sc*(1+sq*0.3),bh=24*sc*(1-sq*0.4);
+
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.1)';
+  ctx.beginPath();ctx.ellipse(x,y+3,bw*0.45,4*sc,0,0,Math.PI*2);ctx.fill();
+
+  // Tail
+  ctx.strokeStyle='#E0E0E0';ctx.lineWidth=2.5*sc;ctx.lineCap='round';
+  ctx.beginPath();ctx.arc(x+bw*0.5+2*sc,y-bh*0.35,6*sc,Math.PI*0.7,Math.PI*0.05,true);ctx.stroke();
+
+  // Ears
+  ctx.fillStyle='#FFF';ctx.strokeStyle='#E8E8E8';ctx.lineWidth=1;
+  // Left ear
+  ctx.save();ctx.beginPath();
+  ctx.ellipse(x-8*sc,y-bh-16*sc,4.5*sc,17*sc,-0.15+sq*0.25,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+  // Right ear
+  ctx.save();ctx.beginPath();
+  ctx.ellipse(x+8*sc,y-bh-16*sc,4.5*sc,17*sc,0.15-sq*0.25,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.restore();
+
+  // Body
+  ctx.fillStyle='#FFF';ctx.strokeStyle='#E0E0E0';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.ellipse(x,y-bh*0.5,bw/2,bh/2,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+
+  // Eyes
+  ctx.fillStyle='#5B9BD5';
+  ctx.beginPath();ctx.arc(x-5*sc,y-bh*0.65,2.5*sc,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x+5*sc,y-bh*0.65,2.5*sc,0,Math.PI*2);ctx.fill();
+  // Highlights
+  ctx.fillStyle='#FFF';
+  ctx.beginPath();ctx.arc(x-4*sc,y-bh*0.72,1*sc,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(x+6*sc,y-bh*0.72,1*sc,0,Math.PI*2);ctx.fill();
+
+  // Cheeks
+  ctx.fillStyle='rgba(255,182,193,0.35)';
+  ctx.beginPath();ctx.ellipse(x-9*sc,y-bh*0.42,3.5*sc,2.5*sc,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(x+9*sc,y-bh*0.42,3.5*sc,2.5*sc,0,0,Math.PI*2);ctx.fill();
+
+  // Mouth
+  ctx.strokeStyle='#BBB';ctx.lineWidth=0.8;
+  ctx.beginPath();ctx.arc(x,y-bh*0.4,1.8*sc,0.15*Math.PI,0.85*Math.PI);ctx.stroke();
+}
+
+function drawParticles(cw,ch){
+  if(particles.length===0)return;
+  let bx,by;
+  
+  if(anim){
+    // 动画中时，粒子跟随动画终点
+    const endPos=w2s(anim.ex,anim.ey,anim.ez-25);
+    bx=endPos.x-camX+cw/2;
+    by=endPos.y-camY+ch/2;
+  } else {
+    // 无动画时，粒子显示在当前平台
+    const curr=platforms[curIdx];
+    if(!curr)return;
+    const base=w2s(curr.x,curr.y,curr.height+20);
+    bx=base.x-camX+cw/2;
+    by=base.y-camY+ch/2;
+  }
+  
+  const now=Date.now();
+  particles.forEach(p=>{
+    const age=(now-p.born)/1000;
+    const a=Math.max(0,1-age/1.5);
+    ctx.fillStyle=p.color;
+    ctx.globalAlpha=a;
+    ctx.beginPath();ctx.arc(bx+p.x,by+p.y,3*a,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+}
+
+// ---- Helpers ----
+function darken(hex,f){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return'rgb('+Math.floor(r*f)+','+Math.floor(g*f)+','+Math.floor(b*f)+')';
+}
+function lighten(hex,f){
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return'rgb('+Math.min(255,r+Math.floor((255-r)*f))+','+Math.min(255,g+Math.floor((255-g)*f))+','+Math.min(255,b+Math.floor((255-b)*f))+')';
+}
+
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>跳一跳 - 大厅</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#7EC8E3;--primary-light:#B8E8F8;--secondary:#FFE4E1;--accent:#FFB6C1;--cream:#FFF8F0;--bg:#F0F8FF;--text:#5B7B8A;--text-dark:#3A5A6A;--border:#D4E6F1;--danger:#FF8A80;--success:#A8E6CF}
+body{font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:linear-gradient(135deg,#E8F4FD 0%,#FFF5E6 50%,#FFE8F0 100%);min-height:100vh;display:flex;align-items:center;justify-content:center}
+.container{background:rgba(255,255,255,0.85);backdrop-filter:blur(20px);border-radius:24px;padding:32px;width:440px;max-width:92vw;box-shadow:0 8px 32px rgba(126,200,227,0.2),0 2px 8px rgba(0,0,0,0.06);border:1px solid rgba(255,255,255,0.6)}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.header h2{font-size:20px;color:var(--text-dark);display:flex;align-items:center;gap:8px}
+.avatar{width:36px;height:36px;background:linear-gradient(135deg,var(--primary),#6BB8D6);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;flex-shrink:0}
+.user-info{display:flex;align-items:center;gap:10px}
+.user-name{font-size:14px;color:var(--text);font-weight:600}
+.btn{padding:10px 18px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:10px}
+.btn-outline{background:transparent;border:2px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--primary);color:var(--primary)}
+.btn-primary{background:linear-gradient(135deg,var(--primary),#6BB8D6);color:#fff;box-shadow:0 3px 10px rgba(126,200,227,0.3)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(126,200,227,0.4)}
+.btn-accent{background:linear-gradient(135deg,var(--accent),#FF9CAD);color:#fff;box-shadow:0 3px 10px rgba(255,182,193,0.3)}
+.btn-accent:hover{transform:translateY(-1px)}
+.btn-success{background:linear-gradient(135deg,var(--success),#7DD3B0);color:#fff;box-shadow:0 3px 10px rgba(168,230,207,0.3)}
+.btn-success:hover{transform:translateY(-1px)}
+.btn-full{width:100%;padding:13px;font-size:15px;border-radius:14px}
+.section{margin-bottom:20px}
+.section h3{font-size:15px;color:var(--text-dark);margin-bottom:12px;font-weight:600}
+.join-row{display:flex;gap:8px}
+.join-row input{flex:1;padding:11px 14px;border:2px solid var(--border);border-radius:12px;font-size:15px;color:var(--text-dark);background:rgba(255,255,255,0.8);outline:none;letter-spacing:4px;font-weight:600;font-family:monospace}
+.join-row input:focus{border-color:var(--primary)}
+.join-row input::placeholder{letter-spacing:0;font-weight:400;font-family:'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif}
+.divider{height:1px;background:var(--border);margin:20px 0}
+#room-panel{display:none}
+.room-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.room-code{font-size:32px;font-weight:800;color:var(--primary);letter-spacing:6px;text-align:center;padding:12px;background:var(--bg);border-radius:14px;font-family:'Courier New',monospace}
+.room-code small{display:block;font-size:12px;font-weight:400;color:var(--text);letter-spacing:0;margin-top:2px}
+.player-list{list-style:none}
+.player-list li{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;margin-bottom:6px;background:rgba(255,255,255,0.6);border:1px solid rgba(0,0,0,0.04);transition:all .2s}
+.player-list li.host{border-color:rgba(126,200,227,0.3);background:rgba(126,200,227,0.08)}
+.player-list .p-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.player-list .p-name{flex:1;font-size:14px;font-weight:500;color:var(--text-dark)}
+.player-list .p-badge{font-size:11px;padding:2px 8px;border-radius:8px;font-weight:600}
+.badge-host{background:rgba(126,200,227,0.15);color:var(--primary)}
+.badge-you{background:rgba(255,182,193,0.15);color:#FF8FAB}
+.actions{display:flex;gap:8px;margin-top:16px}
+.error-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:rgba(255,138,128,0.95);color:#fff;padding:10px 24px;border-radius:12px;font-size:14px;font-weight:500;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.error-toast.show{opacity:1}
+.clouds{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden}
+.cloud{position:absolute;background:rgba(255,255,255,0.4);border-radius:50%;filter:blur(1px)}
+.cloud::before,.cloud::after{content:'';position:absolute;background:inherit;border-radius:50%}
+.c1{width:90px;height:36px;top:8%;animation:drift 28s linear infinite}
+.c1::before{width:45px;height:45px;top:-22px;left:14px}
+.c1::after{width:55px;height:40px;top:-12px;left:36px}
+.c2{width:70px;height:28px;top:70%;animation:drift 32s linear infinite;animation-delay:-15s}
+.c2::before{width:35px;height:35px;top:-18px;left:10px}
+.c2::after{width:42px;height:32px;top:-10px;left:28px}
+@keyframes drift{from{left:-200px}to{left:110%}}
+</style>
+</head>
+<body>
+<div class="clouds"><div class="cloud c1"></div><div class="cloud c2"></div></div>
+<div class="error-toast" id="toast"></div>
+<div class="container">
+  <div class="header">
+    <div class="user-info">
+      <div class="avatar" id="userAvatar"></div>
+      <div><div class="user-name" id="userName"></div></div>
+    </div>
+    <button class="btn btn-sm btn-outline" onclick="logout()">退出登录</button>
+  </div>
+
+  <div id="lobby-panel">
+    <div class="section">
+      <h3>快速开始</h3>
+      <button class="btn btn-accent btn-full" onclick="createRoom()">创建房间</button>
+    </div>
+    <div class="divider"></div>
+    <div class="section">
+      <h3>加入房间</h3>
+      <div class="join-row">
+        <input id="joinCode" placeholder="输入房间码" maxlength="6">
+        <button class="btn btn-primary" onclick="joinRoom()">加入</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="room-panel">
+    <div class="room-header">
+      <h3 style="margin:0">房间</h3>
+      <button class="btn btn-sm btn-outline" onclick="leaveRoom()">离开</button>
+    </div>
+    <div class="room-code" id="roomCode"></div>
+    <ul class="player-list" id="playerList"></ul>
+    <div class="actions" id="roomActions"></div>
+  </div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const AVATAR_COLORS=['#7EC8E3','#FFB6C1','#A8E6CF','#FFD700','#DDA0DD','#87CEEB','#FFA07A','#98D8C8'];
+let user,socket,roomData,roomCode;
+const pidColors={};
+
+function init(){
+  user=JSON.parse(localStorage.getItem('user'));
+  if(!user)return window.location.href='/';
+  document.getElementById('userName').textContent=user.username;
+  document.getElementById('userAvatar').textContent=user.username[0].toUpperCase();
+  
+  // 检查URL参数中是否有房间码
+  const urlParams=new URLSearchParams(window.location.search);
+  const inviteCode=urlParams.get('code');
+  
+  socket=io({auth:{token:localStorage.getItem('token')}});
+  socket.on('connect',()=>{
+    // 如果有邀请房间码，自动加入
+    if(inviteCode){
+      socket.emit('join-room',{code:inviteCode});
+    }
+  });
+  socket.on('error',msg=>showToast(msg));
+  socket.on('room-created',r=>{roomCode=r.code;roomData=r;showRoom(r);});
+  socket.on('room-joined',r=>{roomCode=r.code;roomData=r;showRoom(r);});
+  socket.on('room-updated',r=>{if(!roomCode||r.code===roomCode){roomData=r;showRoom(r);}});
+  socket.on('game-started',r=>{window.location.href='/game.html?code='+r.code;});
+  socket.on('disconnect',()=>showToast('连接断开'));
+  socket.on('play-again-invite',d=>{
+    const inviteMsg=`${d.from} 邀请你再来一局！房间号: ${d.roomCode}`;
+    if(confirm(inviteMsg)){
+      socket.emit('join-room',{code:d.roomCode});
+    }
+  });
+}
+function createRoom(){socket.emit('create-room');}
+function joinRoom(){
+  const c=document.getElementById('joinCode').value.trim();
+  if(!c)return showToast('请输入房间码');
+  socket.emit('join-room',{code:c});
+}
+function leaveRoom(){socket.emit('leave-room',{code:roomCode});roomCode=null;roomData=null;document.getElementById('lobby-panel').style.display='block';document.getElementById('room-panel').style.display='none';}
+function showRoom(r){
+  document.getElementById('lobby-panel').style.display='none';
+  document.getElementById('room-panel').style.display='block';
+  document.getElementById('roomCode').innerHTML=r.code+'<small>分享给好友即可加入</small>';
+  const ul=document.getElementById('playerList');
+  ul.innerHTML='';
+  r.players.forEach((p,i)=>{
+    if(!pidColors[p.id])pidColors[p.id]=AVATAR_COLORS[Object.keys(pidColors).length%AVATAR_COLORS.length];
+    const li=document.createElement('li');
+    if(p.id===r.host)li.classList.add('host');
+    
+    // 显示生命值
+    let livesHtml='';
+    if(p.lives!==undefined){
+      livesHtml='<div style="display:flex;gap:2px;margin-left:8px;">';
+      for(let j=0;j<3;j++){
+        livesHtml+=`<span style="width:10px;height:10px;border-radius:50%;background:${j<p.lives?'#FFB6C1':'rgba(255,182,193,0.3)'};border:2px solid #FFB6C1;"></span>`;
+      }
+      livesHtml+='</div>';
+    }
+    
+    li.innerHTML=`<div class="p-avatar" style="background:${pidColors[p.id]}">${p.username[0].toUpperCase()}</div><span class="p-name">${p.username}</span>${p.id===r.host?'<span class="p-badge badge-host">房主</span>':''}${p.id===user.id?'<span class="p-badge badge-you">你</span>':''}${livesHtml}`;
+    ul.appendChild(li);
+  });
+  const act=document.getElementById('roomActions');
+  if(r.host===user.id&&r.players.length>=2){
+    act.innerHTML='<button class="btn btn-success btn-full" onclick="startGame()">开始游戏</button>';
+  } else if(r.host===user.id){
+    act.innerHTML='<div style="text-align:center;color:var(--text);font-size:13px;padding:8px">等待更多玩家加入（至少2人）</div>';
+  } else {
+    act.innerHTML='<div style="text-align:center;color:var(--text);font-size:13px;padding:8px">等待房主开始游戏...</div>';
+  }
+}
+function startGame(){if(roomCode)socket.emit('start-game',{code:roomCode});}
+function showToast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2500);}
+function logout(){localStorage.removeItem('token');localStorage.removeItem('user');window.location.href='/';}
+window.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
